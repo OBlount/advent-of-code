@@ -1,0 +1,139 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define PUZZLE_PATH "puzzle.txt"
+#define MAX_SYMBOLS 10
+#define BUFFER_SIZE 255
+
+typedef char* Engine;
+typedef char  EnginePart;
+
+void printEngine(Engine engine, size_t engineLen, size_t engineWidth)
+{
+	size_t engineIndex = 0;
+	for (size_t i = 0; i < engineLen; ++i) {
+		for (size_t j = 0; j < engineWidth; ++j) printf("%c", engine[engineIndex++]);
+		printf("\n");
+	}
+
+}
+
+void makeEngine(FILE *f, char *buffer, Engine engine, size_t lineCount, size_t lineLen)
+{
+	for (size_t i = 0; i < lineCount; ++i) {
+		if (i == 0 || i == lineCount-1) {
+			for (size_t j = 0; j < lineLen; ++j) {
+				if (j == lineLen-1) engine[(i*lineLen)+j] = '\0';
+				else 		    engine[(i*lineLen)+j] = '.';
+			}
+		}
+		else {
+			for (size_t j = 0; j < lineLen; ++j) {
+				if 	(j == lineLen-1) engine[(i*lineLen)+j] = '\0';
+				else if (j == lineLen-2) engine[(i*lineLen)+j] = '.';
+				else if (j == 0)    	 engine[(i*lineLen)+j] = '.';
+				else {
+					char *part = fgets(buffer, 2, f);
+					if (part[0] == '\n') part = fgets(buffer, 2, f);
+					engine[(i*lineLen)+j] = part[0];
+				}
+			}
+		}
+	}
+	fseek(f, 0, SEEK_SET);
+}
+
+size_t getLengthOfNumber(Engine engine, size_t index)
+{
+	if (!isdigit(engine[index+1])) return 1;
+	else 			       return 1 + getLengthOfNumber(engine, index+1);
+}
+
+int isPartSymbol(EnginePart part)
+{
+	const char SYMS[MAX_SYMBOLS] = { '#', '$', '%', '&', '*', '+', '-', '/', '=', '@' };
+	for (size_t j = 0; j < MAX_SYMBOLS; ++j) {
+		if (part == SYMS[j]) return 1;
+	}
+	return 0;
+}
+
+int part1(Engine engine, size_t engineSize, size_t lineLen)
+{
+	int partSum = 0;
+	for (size_t i = 0; i < engineSize; ++i) {
+		if (isdigit(engine[i])) {
+			size_t numberLen = getLengthOfNumber(engine, i);
+			char *numberSpan = (char *) calloc(numberLen+1, sizeof(char));
+			size_t numberSpanIndex = 0;
+			for (size_t j = 0; j < numberLen; ++j)
+				numberSpan[numberSpanIndex++] = engine[i+j];
+
+			// Check if the number is ajacent to any symbols:
+			// Check left and right:
+			EnginePart leftPart  = engine[i-1];
+			EnginePart rightPart = engine[i+numberLen];
+			if (isPartSymbol(leftPart) || isPartSymbol(rightPart)) {
+				partSum += atoi(numberSpan);
+				free(numberSpan);
+				i += numberLen;
+				continue;
+			}
+			
+			// Check above and below:
+			size_t aboveStartIndex = (i-lineLen)-1;
+			size_t belowStartIndex = (i+lineLen)-1;
+			short detectedSymbol   = 0;
+			for (size_t j = 0; j < numberLen+2; ++j) {
+				EnginePart selectedPart = engine[aboveStartIndex+j];
+				if (isPartSymbol(selectedPart)) detectedSymbol = 1;
+			}
+			for (size_t j = 0; j < numberLen+2; ++j) {
+				EnginePart selectedPart = engine[belowStartIndex+j];
+				if (isPartSymbol(selectedPart)) detectedSymbol = 1;
+			}
+			if (detectedSymbol) {
+				partSum += atoi(numberSpan);
+				free(numberSpan);
+				i += numberLen;
+				continue;
+			}
+
+			// If no symbol has been detected, we don't add to the sum:
+			free(numberSpan);
+			i += numberLen;
+		}
+	}
+	return partSum;
+}
+
+int main()
+{
+	FILE *f = NULL;
+	char buffer[BUFFER_SIZE] = { '\0' };
+
+	f = fopen(PUZZLE_PATH, "r");
+	if (f == NULL) exit(1);
+
+	// Get engine length and width:
+	fgets(buffer, sizeof(buffer), f);
+	size_t lineLen = strlen(buffer) + 2;
+	fseek(f, 0, SEEK_SET);
+	size_t lineCount = 2;
+	while (fgets(buffer, sizeof(buffer), f)) lineCount++;
+	fseek(f, 0, SEEK_SET);
+
+	// Create, make and pad engine:
+	size_t engineSize = (lineLen * lineCount);
+	Engine engine     = (Engine) calloc(engineSize, sizeof(EnginePart));
+	makeEngine(f, buffer, engine, lineCount, lineLen);
+
+	int partSum = part1(engine, engineSize, lineLen);
+	printf("Part 1 sum: %d\n", partSum);
+
+	fclose(f);
+	free(engine);
+	return 0;
+}
