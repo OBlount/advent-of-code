@@ -19,7 +19,6 @@ void printEngine(Engine engine, size_t engineLen, size_t engineWidth)
 		for (size_t j = 0; j < engineWidth; ++j) printf("%c", engine[engineIndex++]);
 		printf("\n");
 	}
-
 }
 
 void makeEngine(FILE *f, char *buffer, Engine engine, size_t lineCount, size_t lineLen)
@@ -193,7 +192,7 @@ int main()
 	makeEngine(f, buffer, engine, lineCount, lineLen);
 
 	// Gears is a matrix. The first number in a row represents the length of array:
-	int **gears      = (int **) calloc(engineSize, sizeof(int *));
+	int **gears = (int **) calloc(engineSize, sizeof(int *));
 	for (size_t i = 0; i < engineSize; ++i) gears[i] = (int *) calloc(MAX_GEAR_SIZE, sizeof(int));
 
 	int partSum      = part1(engine, engineSize, lineLen);
